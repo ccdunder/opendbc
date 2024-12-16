@@ -221,7 +221,6 @@ class CarController(CarControllerBase, EsccCarController, LeadDataCarController,
         # cruise cancel
         if CC.cruiseControl.cancel:
           if self.CP.flags & HyundaiFlags.CANFD_ALT_BUTTONS:
-            # TODO: Any reason to not just send the button?
             can_sends.append(hyundaicanfd.create_acc_cancel(self.packer, self.CP, self.CAN, CS.cruise_info))
             self.last_button_frame = self.frame
           else:
