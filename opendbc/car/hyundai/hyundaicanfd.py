@@ -283,7 +283,7 @@ def hkg_can_fd_checksum(address: int, sig, d: bytearray) -> int:
   return crc
 
 
-def create_ccnc(packer, CAN, frame, CP, CC, CS):
+def create_ccnc(packer, CAN, CP, CC, CS):
   ret = []
 
   msg_161 = CS.msg_161.copy()
@@ -346,7 +346,8 @@ def create_ccnc(packer, CAN, frame, CP, CC, CS):
       "LEAD_DISTANCE": 150,
     })
 
-  ret.append(packer.make_can_msg("CCNC_0x161", CAN.ECAN, msg_161))
-  ret.append(packer.make_can_msg("CCNC_0x162", CAN.ECAN, msg_162))
+  canout = CAN.ECAN if CP.flags & HyundaiFlags.CANFD_LKA_STEERING else CAN.ACAN
+  ret.append(packer.make_can_msg("CCNC_0x161", canout, msg_161))
+  ret.append(packer.make_can_msg("CCNC_0x162", canout, msg_162))
 
   return ret
