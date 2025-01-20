@@ -346,8 +346,7 @@ def create_ccnc(packer, CAN, CP, CC, CS):
       "LEAD_DISTANCE": 150,
     })
 
-  canout = CAN.ECAN if CP.flags & HyundaiFlags.CANFD_LKA_STEERING else CAN.ACAN
-  ret.append(packer.make_can_msg("CCNC_0x161", canout, msg_161))
-  ret.append(packer.make_can_msg("CCNC_0x162", canout, msg_162))
+  ret.append(packer.make_can_msg("CCNC_0x161", CAN.ECAN, msg_161))
+  ret.append(packer.make_can_msg("CCNC_0x161", CAN.ECAN, msg_162))
 
   return ret
