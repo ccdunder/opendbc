@@ -1,9 +1,9 @@
 import copy
+import numpy as np
 from opendbc.can.can_define import CANDefine
 from opendbc.can.parser import CANParser
 from opendbc.car import Bus, create_button_events, structs
 from opendbc.car.common.conversions import Conversions as CV
-from opendbc.car.common.numpy_fast import mean
 from opendbc.car.interfaces import CarStateBase
 from opendbc.car.gm.values import DBC, AccState, CruiseButtons, STEER_THRESHOLD, SDGM_CAR, ALT_ACCS
 
@@ -18,8 +18,8 @@ BUTTONS_DICT = {CruiseButtons.RES_ACCEL: ButtonType.accelCruise, CruiseButtons.D
 
 
 class CarState(CarStateBase):
-  def __init__(self, CP):
-    super().__init__(CP)
+  def __init__(self, CP, CP_SP):
+    super().__init__(CP, CP_SP)
     can_define = CANDefine(DBC[CP.carFingerprint][Bus.pt])
     self.shifter_values = can_define.dv["ECMPRDNL2"]["PRNDL2"]
     self.cluster_speed_hyst_gap = CV.KPH_TO_MS / 2.
@@ -65,7 +65,7 @@ class CarState(CarStateBase):
       left_whl_sign * pt_cp.vl["EBCMWheelSpdRear"]["RLWheelSpd"],
       right_whl_sign * pt_cp.vl["EBCMWheelSpdRear"]["RRWheelSpd"],
     )
-    ret.vEgoRaw = mean([ret.wheelSpeeds.fl, ret.wheelSpeeds.fr, ret.wheelSpeeds.rl, ret.wheelSpeeds.rr])
+    ret.vEgoRaw = float(np.mean([ret.wheelSpeeds.fl, ret.wheelSpeeds.fr, ret.wheelSpeeds.rl, ret.wheelSpeeds.rr]))
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
     # sample rear wheel speeds, standstill=True if ECM allows engagement with brake
     ret.standstill = abs(ret.wheelSpeeds.rl) <= STANDSTILL_THRESHOLD and abs(ret.wheelSpeeds.rr) <= STANDSTILL_THRESHOLD
@@ -152,7 +152,7 @@ class CarState(CarStateBase):
     return ret
 
   @staticmethod
-  def get_can_parsers(CP):
+  def get_can_parsers(CP, CP_SP):
     pt_messages = [
       ("BCMTurnSignals", 1),
       ("ECMPRDNL2", 10),

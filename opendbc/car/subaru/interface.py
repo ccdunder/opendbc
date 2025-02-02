@@ -9,7 +9,7 @@ class CarInterface(CarInterfaceBase):
 
   @staticmethod
   def _get_params(ret: structs.CarParams, candidate: CAR, fingerprint, car_fw, experimental_long, docs) -> structs.CarParams:
-    ret.carName = "subaru"
+    ret.brand = "subaru"
     ret.radarUnavailable = True
     # for HYBRID CARS to be upstreamed, we need:
     # - replacement for ES_Distance so we can cancel the cruise control
@@ -95,6 +95,6 @@ class CarInterface(CarInterfaceBase):
     return ret
 
   @staticmethod
-  def init(CP, can_recv, can_send):
+  def init(CP, CP_SP, can_recv, can_send):
     if CP.flags & SubaruFlags.DISABLE_EYESIGHT:
       disable_ecu(can_recv, can_send, bus=2, addr=GLOBAL_ES_ADDR, com_cont_req=b'\x28\x03\x01')

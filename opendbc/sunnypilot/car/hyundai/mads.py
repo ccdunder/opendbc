@@ -30,7 +30,6 @@ from collections import namedtuple
 from opendbc.car import Bus, DT_CTRL, structs
 from opendbc.car.hyundai.values import CAR
 
-from opendbc.sunnypilot import SunnypilotParamFlags
 from opendbc.car.hyundai.values import HyundaiFlags
 from opendbc.sunnypilot.car.hyundai.values import HyundaiFlagsSP
 from opendbc.sunnypilot.mads_base import MadsCarStateBase
@@ -55,8 +54,8 @@ class MadsCarController:
     self.lfa_icon = 0
 
   # display LFA "white_wheel" and LKAS "White car + lanes" when not CC.latActive
-  def mads_status_update(self, CC: structs.CarControl, frame: int) -> MadsDataSP:
-    enable_mads = CC.sunnypilotParams & SunnypilotParamFlags.ENABLE_MADS
+  def mads_status_update(self, CC: structs.CarControl, CC_SP: structs.CarControlSP, frame: int) -> MadsDataSP:
+    enable_mads = CC_SP.mads.available
 
     if CC.latActive:
       self.lat_disengage_init = False
@@ -66,7 +65,7 @@ class MadsCarController:
     if not self.lat_disengage_init:
       self.lat_disengage_blink = frame
 
-    paused = CC.madsEnabled and not CC.latActive
+    paused = CC_SP.mads.enabled and not CC.latActive
     disengaging = (frame - self.lat_disengage_blink) * DT_CTRL < 1.0 if self.lat_disengage_init else False
 
     self.prev_lat_active = CC.latActive
@@ -93,25 +92,25 @@ class MadsCarController:
 
     return lfa_icon
 
-  def update(self, CP: structs.CarParams, CC: structs.CarControl, frame: int) -> None:
-    self.mads = self.mads_status_update(CC, frame)
+  def update(self, CP: structs.CarParams, CC: structs.CarControl, CC_SP: structs.CarControlSP, frame: int) -> None:
+    self.mads = self.mads_status_update(CC, CC_SP, frame)
     self.lkas_icon = self.create_lkas_icon(CP, CC.enabled)
     self.lfa_icon = self.create_lfa_icon(CC.enabled)
 
 
 class MadsCarState(MadsCarStateBase):
-  def __init__(self, CP: structs.CarParams):
-    super().__init__(CP)
+  def __init__(self, CP: structs.CarParams, CP_SP: structs.CarParams):
+    super().__init__(CP, CP_SP)
     self.main_cruise_enabled: bool = False
     self.cruise_btns_msg_canfd = None
 
   @staticmethod
-  def get_parser(CP, pt_messages) -> None:
-    if CP.sunnypilotFlags & HyundaiFlagsSP.HAS_LFA_BUTTON:
+  def get_parser(CP, CP_SP, pt_messages) -> None:
+    if CP_SP.flags & HyundaiFlagsSP.HAS_LFA_BUTTON:
       pt_messages.append(("BCM_PO_11", 50))
 
   def get_main_cruise(self, ret: structs.CarState) -> bool:
-    if self.CP.sunnypilotFlags & HyundaiFlagsSP.LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE:
+    if self.CP_SP.flags & HyundaiFlagsSP.LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE:
       if any(be.type == ButtonType.mainCruise and be.pressed for be in ret.buttonEvents):
         self.main_cruise_enabled = not self.main_cruise_enabled
     else:
@@ -123,7 +122,7 @@ class MadsCarState(MadsCarStateBase):
     cp = can_parsers[Bus.pt]
 
     self.prev_lkas_button = self.lkas_button
-    if self.CP.sunnypilotFlags & HyundaiFlagsSP.HAS_LFA_BUTTON:
+    if self.CP_SP.flags & HyundaiFlagsSP.HAS_LFA_BUTTON:
       self.lkas_button = cp.vl["BCM_PO_11"]["LFA_Pressed"]
 
   def update_mads_canfd(self, ret, can_parsers) -> None:

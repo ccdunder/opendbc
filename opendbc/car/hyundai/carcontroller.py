@@ -1,7 +1,7 @@
+import numpy as np
 from opendbc.can.packer import CANPacker
 from opendbc.car import Bus, DT_CTRL, apply_driver_steer_torque_limits, common_fault_avoidance, make_tester_present_msg, structs
 from opendbc.car.common.conversions import Conversions as CV
-from opendbc.car.common.numpy_fast import clip
 from opendbc.car.hyundai import hyundaicanfd, hyundaican
 from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.hyundaicanfd import CanBus
@@ -46,9 +46,9 @@ def process_hud_alert(enabled, fingerprint, hud_control):
 
 
 class CarController(CarControllerBase, EsccCarController, MadsCarController):
-  def __init__(self, dbc_names, CP):
-    CarControllerBase.__init__(self, dbc_names, CP)
-    EsccCarController.__init__(self, CP)
+  def __init__(self, dbc_names, CP, CP_SP):
+    CarControllerBase.__init__(self, dbc_names, CP, CP_SP)
+    EsccCarController.__init__(self, CP, CP_SP)
     MadsCarController.__init__(self)
     self.CAN = CanBus(CP)
     self.params = CarControllerParams(CP)
@@ -60,9 +60,9 @@ class CarController(CarControllerBase, EsccCarController, MadsCarController):
     self.car_fingerprint = CP.carFingerprint
     self.last_button_frame = 0
 
-  def update(self, CC, CS, now_nanos):
+  def update(self, CC, CC_SP, CS, now_nanos):
     EsccCarController.update(self, CS)
-    MadsCarController.update(self, self.CP, CC, self.frame)
+    MadsCarController.update(self, self.CP, CC, CC_SP, self.frame)
     actuators = CC.actuators
     hud_control = CC.hudControl
 
@@ -84,7 +84,7 @@ class CarController(CarControllerBase, EsccCarController, MadsCarController):
     self.apply_steer_last = apply_steer
 
     # accel + longitudinal
-    accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, CarControllerParams.ACCEL_MAX)
+    accel = float(np.clip(actuators.accel, CarControllerParams.ACCEL_MIN, CarControllerParams.ACCEL_MAX))
     stopping = actuators.longControlState == LongCtrlState.stopping
     set_speed_in_units = hud_control.setSpeed * (CV.MS_TO_KPH if CS.is_metric else CV.MS_TO_MPH)
 

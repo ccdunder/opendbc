@@ -1,5 +1,5 @@
+import numpy as np
 from opendbc.can.packer import CANPacker
-from opendbc.car.common.numpy_fast import clip
 from opendbc.car import Bus, apply_std_steer_angle_limits, structs
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.nissan import nissancan
@@ -9,8 +9,8 @@ VisualAlert = structs.CarControl.HUDControl.VisualAlert
 
 
 class CarController(CarControllerBase):
-  def __init__(self, dbc_names, CP):
-    super().__init__(dbc_names, CP)
+  def __init__(self, dbc_names, CP, CP_SP):
+    super().__init__(dbc_names, CP, CP_SP)
     self.car_fingerprint = CP.carFingerprint
 
     self.lkas_max_torque = 0
@@ -18,7 +18,7 @@ class CarController(CarControllerBase):
 
     self.packer = CANPacker(dbc_names[Bus.pt])
 
-  def update(self, CC, CS, now_nanos):
+  def update(self, CC, CC_SP, CS, now_nanos):
     actuators = CC.actuators
     hud_control = CC.hudControl
     pcm_cancel_cmd = CC.cruiseControl.cancel
@@ -48,7 +48,7 @@ class CarController(CarControllerBase):
       apply_angle = CS.out.steeringAngleDeg
       self.lkas_max_torque = 0
 
-    apply_angle = clip(apply_angle, -CarControllerParams.MAX_STEER_ANGLE, CarControllerParams.MAX_STEER_ANGLE)
+    apply_angle = float(np.clip(apply_angle, -CarControllerParams.MAX_STEER_ANGLE, CarControllerParams.MAX_STEER_ANGLE))
     self.apply_angle_last = apply_angle
 
     if self.CP.carFingerprint in (CAR.NISSAN_ROGUE, CAR.NISSAN_XTRAIL, CAR.NISSAN_ALTIMA) and pcm_cancel_cmd:
