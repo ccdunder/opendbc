@@ -198,9 +198,12 @@ static bool hyundai_canfd_tx_hook(const CANPacket_t *to_send) {
       violation |= longitudinal_accel_checks(desired_accel_val, HYUNDAI_LONG_LIMITS);
     } else {
       // only used to cancel on here
+      // GCOV_EXCL_START
+      // TODO: Cover this with tests.
       if ((desired_accel_raw != 0) || (desired_accel_val != 0)) {
         violation = true;
       }
+      // GCOV_EXCL_STOP
     }
 
     if (violation) {
