@@ -1,13 +1,11 @@
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 // TODO: time should just be passed into the hooks we expose
 uint32_t timer_cnt = 0;
 uint32_t microsecond_timer_get(void);
-uint32_t microsecond_timer_get(void) {
-  return timer_cnt;
-}
+uint32_t microsecond_timer_get(void) { return timer_cnt; }
 
 #include "opendbc/safety/can.h"
 #include "opendbc/safety/safety.h"
@@ -24,228 +22,158 @@ bool safety_config_valid() {
 
   for (int i = 0; i < current_safety_config.rx_checks_len; i++) {
     const RxCheck addr = current_safety_config.rx_checks[i];
-    bool valid = addr.status.msg_seen && !addr.status.lagging && addr.status.valid_checksum && (addr.status.wrong_counters < MAX_WRONG_COUNTERS) && addr.status.valid_quality_flag;
+    bool valid = addr.status.msg_seen && !addr.status.lagging &&
+                 addr.status.valid_checksum &&
+                 (addr.status.wrong_counters < MAX_WRONG_COUNTERS) &&
+                 addr.status.valid_quality_flag;
     if (!valid) {
-      // printf("i %d seen %d lagging %d valid checksum %d wrong counters %d valid quality flag %d\n", i, addr.status.msg_seen, addr.status.lagging, addr.status.valid_checksum, addr.status.wrong_counters, addr.status.valid_quality_flag);
+      printf("i %d seen %d lagging %d valid checksum %d wrong counters %d "
+             "valid quality flag %d\n",
+             i, addr.status.msg_seen, addr.status.lagging,
+             addr.status.valid_checksum, addr.status.wrong_counters,
+             addr.status.valid_quality_flag);
+      for (unsigned int j = 0; j < MAX_ADDR_CHECK_MSGS; j++) {
+        const CanMsgCheck msg = addr.msg[j];
+        if (msg.addr == 0) {
+          break;
+        }
+        printf("i %d j %d bus %d addr 0x%x len %d\n", i, j, msg.bus, msg.addr,
+               msg.len);
+      }
       return false;
     }
   }
   return true;
 }
 
-void set_controls_allowed(bool c){
-  controls_allowed = c;
-}
+void set_controls_allowed(bool c) { controls_allowed = c; }
 
-void set_alternative_experience(int mode){
-  alternative_experience = mode;
-}
+void set_alternative_experience(int mode) { alternative_experience = mode; }
 
-void set_relay_malfunction(bool c){
-  relay_malfunction = c;
-}
+void set_relay_malfunction(bool c) { relay_malfunction = c; }
 
-bool get_controls_allowed(void){
-  return controls_allowed;
-}
+bool get_controls_allowed(void) { return controls_allowed; }
 
-int get_alternative_experience(void){
-  return alternative_experience;
-}
+int get_alternative_experience(void) { return alternative_experience; }
 
-bool get_relay_malfunction(void){
-  return relay_malfunction;
-}
+bool get_relay_malfunction(void) { return relay_malfunction; }
 
-bool get_gas_pressed_prev(void){
-  return gas_pressed_prev;
-}
+bool get_gas_pressed_prev(void) { return gas_pressed_prev; }
 
-void set_gas_pressed_prev(bool c){
-  gas_pressed_prev = c;
-}
+void set_gas_pressed_prev(bool c) { gas_pressed_prev = c; }
 
-bool get_brake_pressed_prev(void){
-  return brake_pressed_prev;
-}
+bool get_brake_pressed_prev(void) { return brake_pressed_prev; }
 
-bool get_regen_braking_prev(void){
-  return regen_braking_prev;
-}
+bool get_regen_braking_prev(void) { return regen_braking_prev; }
 
-bool get_steering_disengage_prev(void){
-  return steering_disengage_prev;
-}
+bool get_steering_disengage_prev(void) { return steering_disengage_prev; }
 
-bool get_cruise_engaged_prev(void){
-  return cruise_engaged_prev;
-}
+bool get_cruise_engaged_prev(void) { return cruise_engaged_prev; }
 
-void set_cruise_engaged_prev(bool engaged){
-  cruise_engaged_prev = engaged;
-}
+void set_cruise_engaged_prev(bool engaged) { cruise_engaged_prev = engaged; }
 
-bool get_vehicle_moving(void){
-  return vehicle_moving;
-}
+bool get_vehicle_moving(void) { return vehicle_moving; }
 
-bool get_acc_main_on(void){
-  return acc_main_on;
-}
+bool get_acc_main_on(void) { return acc_main_on; }
 
-float get_vehicle_speed_min(void){
+float get_vehicle_speed_min(void) {
   return vehicle_speed.min / VEHICLE_SPEED_FACTOR;
 }
 
-float get_vehicle_speed_max(void){
+float get_vehicle_speed_max(void) {
   return vehicle_speed.max / VEHICLE_SPEED_FACTOR;
 }
 
-int get_current_safety_mode(void){
-  return current_safety_mode;
-}
+int get_current_safety_mode(void) { return current_safety_mode; }
 
-int get_current_safety_param(void){
-  return current_safety_param;
-}
+int get_current_safety_param(void) { return current_safety_param; }
 
-void set_timer(uint32_t t){
-  timer_cnt = t;
-}
+void set_timer(uint32_t t) { timer_cnt = t; }
 
-void set_torque_meas(int min, int max){
+void set_torque_meas(int min, int max) {
   torque_meas.min = min;
   torque_meas.max = max;
 }
 
-int get_torque_meas_min(void){
-  return torque_meas.min;
-}
+int get_torque_meas_min(void) { return torque_meas.min; }
 
-int get_torque_meas_max(void){
-  return torque_meas.max;
-}
+int get_torque_meas_max(void) { return torque_meas.max; }
 
-void set_torque_driver(int min, int max){
+void set_torque_driver(int min, int max) {
   torque_driver.min = min;
   torque_driver.max = max;
 }
 
-int get_torque_driver_min(void){
-  return torque_driver.min;
-}
+int get_torque_driver_min(void) { return torque_driver.min; }
 
-int get_torque_driver_max(void){
-  return torque_driver.max;
-}
+int get_torque_driver_max(void) { return torque_driver.max; }
 
-void set_rt_torque_last(int t){
-  rt_torque_last = t;
-}
+void set_rt_torque_last(int t) { rt_torque_last = t; }
 
-void set_desired_torque_last(int t){
-  desired_torque_last = t;
-}
+void set_desired_torque_last(int t) { desired_torque_last = t; }
 
-void set_desired_angle_last(int t){
-  desired_angle_last = t;
-}
+void set_desired_angle_last(int t) { desired_angle_last = t; }
 
-int get_desired_angle_last(void){
-  return desired_angle_last;
-}
+int get_desired_angle_last(void) { return desired_angle_last; }
 
-void set_angle_meas(int min, int max){
+void set_angle_meas(int min, int max) {
   angle_meas.min = min;
   angle_meas.max = max;
 }
 
-int get_angle_meas_min(void){
-  return angle_meas.min;
-}
+int get_angle_meas_min(void) { return angle_meas.min; }
 
-int get_angle_meas_max(void){
-  return angle_meas.max;
-}
-
+int get_angle_meas_max(void) { return angle_meas.max; }
 
 // ***** car specific helpers *****
 
-void set_honda_alt_brake_msg(bool c){
-  honda_alt_brake_msg = c;
-}
+void set_honda_alt_brake_msg(bool c) { honda_alt_brake_msg = c; }
 
-void set_honda_bosch_long(bool c){
-  honda_bosch_long = c;
-}
+void set_honda_bosch_long(bool c) { honda_bosch_long = c; }
 
-int get_honda_hw(void) {
-  return honda_hw;
-}
+int get_honda_hw(void) { return honda_hw; }
 
-void set_honda_fwd_brake(bool c){
-  honda_fwd_brake = c;
-}
+void set_honda_fwd_brake(bool c) { honda_fwd_brake = c; }
 
-bool get_honda_fwd_brake(void){
-  return honda_fwd_brake;
-}
+bool get_honda_fwd_brake(void) { return honda_fwd_brake; }
 
-static MADSState *get_mads_state(void) {
-  return &m_mads_state;
-}
+static MADSState *get_mads_state(void) { return &m_mads_state; }
 
-bool get_lat_active(void){
-  return is_lat_active();
-}
+bool get_lat_active(void) { return is_lat_active(); }
 
-bool get_controls_allowed_lat(void){
+bool get_controls_allowed_lat(void) {
   return mads_is_lateral_control_allowed_by_mads();
 }
 
-bool get_controls_requested_lat(void){
+bool get_controls_requested_lat(void) {
   return get_mads_state()->controls_requested_lat;
 }
 
-bool get_enable_mads(void){
-  return get_mads_state()->system_enabled;
-}
+bool get_enable_mads(void) { return get_mads_state()->system_enabled; }
 
-bool get_disengage_lateral_on_brake(void){
+bool get_disengage_lateral_on_brake(void) {
   return get_mads_state()->disengage_lateral_on_brake;
 }
 
-bool get_pause_lateral_on_brake(void){
+bool get_pause_lateral_on_brake(void) {
   return get_mads_state()->pause_lateral_on_brake;
 }
 
-void set_acc_main_on(bool c){
-  acc_main_on = c;
-}
+void set_acc_main_on(bool c) { acc_main_on = c; }
 
-void set_current_safety_param_sp(uint16_t param){
+void set_current_safety_param_sp(uint16_t param) {
   current_safety_param_sp = param;
 }
 
-uint16_t get_current_safety_param_sp(void){
-  return current_safety_param_sp;
-}
+uint16_t get_current_safety_param_sp(void) { return current_safety_param_sp; }
 
-void set_mads_button_press(int c){
-  mads_button_press = c;
-}
+void set_mads_button_press(int c) { mads_button_press = c; }
 
-int get_mads_button_press(void){
-  return mads_button_press;
-}
+int get_mads_button_press(void) { return mads_button_press; }
 
-void set_controls_allowed_lat(bool c){
-  m_mads_state.controls_allowed_lat = c;
-}
+void set_controls_allowed_lat(bool c) { m_mads_state.controls_allowed_lat = c; }
 
-bool get_mads_acc_main(void){
-  return m_mads_state.acc_main.current;
-}
+bool get_mads_acc_main(void) { return m_mads_state.acc_main.current; }
 
 int mads_get_current_disengage_reason(void) {
   return get_mads_state()->current_disengage.active_reason;
@@ -255,11 +183,12 @@ void mads_set_current_disengage_reason(int reason) {
   m_mads_state.current_disengage.active_reason = reason;
 }
 
-void set_controls_requested_lat(bool c){
+void set_controls_requested_lat(bool c) {
   m_mads_state.controls_requested_lat = c;
 }
 
-void set_mads_params(bool enable_mads, bool disengage_lateral_on_brake, bool pause_lateral_on_brake){
+void set_mads_params(bool enable_mads, bool disengage_lateral_on_brake,
+                     bool pause_lateral_on_brake) {
   alternative_experience = 0;
   if (enable_mads) {
     alternative_experience |= ALT_EXP_ENABLE_MADS;
@@ -275,20 +204,14 @@ void set_mads_params(bool enable_mads, bool disengage_lateral_on_brake, bool pau
   mads_set_alternative_experience(&alternative_experience);
 }
 
-void set_heartbeat_engaged_mads(bool c){
-  heartbeat_engaged_mads = c;
-}
+void set_heartbeat_engaged_mads(bool c) { heartbeat_engaged_mads = c; }
 
-void set_steering_disengage(bool c){
-  steering_disengage = c;
-}
+void set_steering_disengage(bool c) { steering_disengage = c; }
 
-int get_gas_interceptor_prev(void){
-  return gas_interceptor_prev;
-}
+int get_gas_interceptor_prev(void) { return gas_interceptor_prev; }
 
-void init_tests(void){
-  safety_mode_cnt = 2U;  // avoid ignoring relay_malfunction logic
+void init_tests(void) {
+  safety_mode_cnt = 2U; // avoid ignoring relay_malfunction logic
   alternative_experience = 0;
   current_safety_param_sp = 0;
   set_timer(0);
@@ -296,6 +219,7 @@ void init_tests(void){
   valid_steer_req_count = 0;
   invalid_steer_req_count = 0;
 
-  // assumes autopark on safety mode init to avoid a fault. get rid of that for testing
+  // assumes autopark on safety mode init to avoid a fault. get rid of that for
+  // testing
   tesla_autopark = false;
 }
