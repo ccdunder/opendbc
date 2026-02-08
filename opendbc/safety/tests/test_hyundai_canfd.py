@@ -24,15 +24,15 @@ ALL_GAS_EV_HYBRID_COMBOS = [
 
 class TestHyundaiCanfdBase(HyundaiButtonBase, common.CarSafetyTest, common.DriverTorqueSteeringSafetyTest, common.SteerRequestCutSafetyTest):
 
-  TX_MSGS = [[0x50, 0], [0x1CF, 1], [0x1AA, 1], [0x2A4, 0]]
+  TX_MSGS = [[0x50, 0], [0x1CF, 1], [0x2A4, 0]]
   STANDSTILL_THRESHOLD = 12  # 0.375 kph
   FWD_BLACKLISTED_ADDRS = {2: [0x50, 0x2a4]}
 
-  MAX_RATE_UP = 4
-  MAX_RATE_DOWN = 6
+  MAX_RATE_UP = 2
+  MAX_RATE_DOWN = 3
   MAX_TORQUE_LOOKUP = [0], [270]
 
-  MAX_RT_DELTA = 250
+  MAX_RT_DELTA = 112
 
   DRIVER_TORQUE_ALLOWANCE = 250
   DRIVER_TORQUE_FACTOR = 2
@@ -93,30 +93,9 @@ class TestHyundaiCanfdBase(HyundaiButtonBase, common.CarSafetyTest, common.Drive
     return self._button_msg(0, enabled)
 
 
-class HyundaiCanfdAltButtonsMixin:
-  @classmethod
-  def setUpClass(cls):
-    super().setUpClass()
-    cls.SAFETY_PARAM |= HyundaiSafetyFlags.CANFD_ALT_BUTTONS
-
-  def _button_msg(self, buttons, main_button=0, bus=None):
-    if bus is None:
-      bus = self.PT_BUS
-    values = {
-      "CRUISE_BUTTONS": buttons,
-      "ADAPTIVE_CRUISE_MAIN_BTN": main_button,
-    }
-    msg = self.packer.make_can_msg_safety("CRUISE_BUTTONS_ALT", bus, values)
-    return msg
-
-  def _lkas_button_msg(self, enabled):
-    values = {"LFA_BTN": enabled}
-    return self.packer.make_can_msg_safety("CRUISE_BUTTONS_ALT", self.PT_BUS, values)
-
-
 class TestHyundaiCanfdLFASteeringBase(TestHyundaiCanfdBase):
 
-  TX_MSGS = [[0x12A, 0], [0x1A0, 1], [0x1CF, 0], [0x1AA, 0], [0x1E0, 0]]
+  TX_MSGS = [[0x12A, 0], [0x1A0, 1], [0x1CF, 0], [0x1E0, 0]]
   RELAY_MALFUNCTION_ADDRS = {0: (0x12A, 0x1E0)}  # LFA, LFAHDA_CLUSTER
   FWD_BLACKLISTED_ADDRS = {2: [0x12A, 0x1E0]}
 
@@ -144,19 +123,39 @@ class TestHyundaiCanfdLFASteering(TestHyundaiCanfdLFASteeringBase):
   pass
 
 
-class TestHyundaiCanfdLFASteeringAltButtonsBase(HyundaiCanfdAltButtonsMixin, TestHyundaiCanfdLFASteeringBase):
+class TestHyundaiCanfdLFASteeringAltButtonsBase(TestHyundaiCanfdLFASteeringBase):
 
   SAFETY_PARAM: int
 
   def setUp(self):
     self.packer = CANPackerSafety("hyundai_canfd_generated")
     self.safety = libsafety_py.libsafety
-    self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, self.SAFETY_PARAM)
+    self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, HyundaiSafetyFlags.CANFD_ALT_BUTTONS | self.SAFETY_PARAM)
     self.safety.init_tests()
+
+  def _button_msg(self, buttons, main_button=0, bus=1):
+    values = {
+      "CRUISE_BUTTONS": buttons,
+      "ADAPTIVE_CRUISE_MAIN_BTN": main_button,
+    }
+    return self.packer.make_can_msg_safety("CRUISE_BUTTONS_ALT", self.PT_BUS, values)
+
+  def _lkas_button_msg(self, enabled):
+    values = {"LDA_BTN": enabled}
+    return self.packer.make_can_msg_safety("CRUISE_BUTTONS_ALT", self.PT_BUS, values)
 
   def _acc_cancel_msg(self, cancel, accel=0):
     values = {"ACCMode": 4 if cancel else 0, "aReqRaw": accel, "aReqValue": accel}
     return self.packer.make_can_msg_safety("SCC_CONTROL", self.PT_BUS, values)
+
+  def test_button_sends(self):
+    """
+      No button send allowed with alt buttons.
+    """
+    for enabled in (True, False):
+      for btn in range(8):
+        self.safety.set_controls_allowed(enabled)
+        self.assertFalse(self._tx(self._button_msg(btn)))
 
   def test_acc_cancel(self):
     # FIXME: the CANFD_ALT_BUTTONS cars are the only ones that use SCC_CONTROL to cancel, why can't we use buttons?
@@ -172,19 +171,16 @@ class TestHyundaiCanfdLFASteeringAltButtons(TestHyundaiCanfdLFASteeringAltButton
   pass
 
 
-class TestHyundaiCanfdLKASteeringEVBase(TestHyundaiCanfdBase):
-  PT_BUS = 1
-  SCC_BUS = 1
-  GAS_MSG = ("ACCELERATOR", "ACCELERATOR_PEDAL")
-  FWD_BUS_LOOKUP = {0: 2, 2: 0}
+class TestHyundaiCanfdLKASteeringEV(TestHyundaiCanfdBase):
 
-
-class TestHyundaiCanfdLKASteeringEV(TestHyundaiCanfdLKASteeringEVBase):
-
-  TX_MSGS = [[0x50, 0], [0x1CF, 1], [0x1AA, 1], [0x2A4, 0]]
+  TX_MSGS = [[0x50, 0], [0x1CF, 1], [0x2A4, 0]]
   RELAY_MALFUNCTION_ADDRS = {0: (0x50, 0x2a4)}  # LKAS, CAM_0x2A4
   FWD_BLACKLISTED_ADDRS = {2: [0x50, 0x2a4]}
+
+  PT_BUS = 1
+  SCC_BUS = 1
   STEER_MSG = "LKAS"
+  GAS_MSG = ("ACCELERATOR", "ACCELERATOR_PEDAL")
 
   def setUp(self):
     self.packer = CANPackerSafety("hyundai_canfd_generated")
@@ -194,13 +190,16 @@ class TestHyundaiCanfdLKASteeringEV(TestHyundaiCanfdLKASteeringEVBase):
 
 
 # TODO: Handle ICE and HEV configurations once we see cars that use the new messages
-class TestHyundaiCanfdLKASteeringAltEV(TestHyundaiCanfdLKASteeringEVBase):
+class TestHyundaiCanfdLKASteeringAltEV(TestHyundaiCanfdBase):
 
-  TX_MSGS = [[0x110, 0], [0x1CF, 1], [0x1AA, 1], [0x362, 0]]
+  TX_MSGS = [[0x110, 0], [0x1CF, 1], [0x362, 0]]
   RELAY_MALFUNCTION_ADDRS = {0: (0x110, 0x362)}  # LKAS_ALT, CAM_0x362
   FWD_BLACKLISTED_ADDRS = {2: [0x110, 0x362]}
 
+  PT_BUS = 1
+  SCC_BUS = 1
   STEER_MSG = "LKAS_ALT"
+  GAS_MSG = ("ACCELERATOR", "ACCELERATOR_PEDAL")
 
   def setUp(self):
     self.packer = CANPackerSafety("hyundai_canfd_generated")
@@ -210,18 +209,10 @@ class TestHyundaiCanfdLKASteeringAltEV(TestHyundaiCanfdLKASteeringEVBase):
     self.safety.init_tests()
 
 
-class TestHyundaiCanfdLKASteeringEVAltButtons(HyundaiCanfdAltButtonsMixin, TestHyundaiCanfdLKASteeringEV):
-  pass
-
-
-class TestHyundaiCanfdLKASteeringAltEVAltButtons(HyundaiCanfdAltButtonsMixin, TestHyundaiCanfdLKASteeringAltEV):
-  pass
-
-
 class TestHyundaiCanfdLKASteeringLongEV(HyundaiLongitudinalBase, TestHyundaiCanfdLKASteeringEV):
 
-  TX_MSGS = [[0x50, 0], [0x1CF, 1], [0x1AA, 1], [0x2A4, 0], [0x51, 0], [0x730, 1], [0x12a, 1], [0x160, 1],
-             [0x1e0, 1], [0x1a0, 1], [0x1ea, 1], [0x200, 1], [0x345, 1], [0x1da, 1], [0x38c, 1], [0x161, 1], [0x162, 1]]
+  TX_MSGS = [[0x50, 0], [0x1CF, 1], [0x2A4, 0], [0x51, 0], [0x730, 1], [0x12a, 1], [0x160, 1],
+             [0x1e0, 1], [0x1a0, 1], [0x1ea, 1], [0x200, 1], [0x345, 1], [0x1da, 1]]
 
   RELAY_MALFUNCTION_ADDRS = {0: (0x50, 0x2a4), 1: (0x1a0,)}  # LKAS, CAM_0x2A4, SCC_CONTROL
 
@@ -237,38 +228,6 @@ class TestHyundaiCanfdLKASteeringLongEV(HyundaiLongitudinalBase, TestHyundaiCanf
     self.safety = libsafety_py.libsafety
     self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, HyundaiSafetyFlags.CANFD_LKA_STEERING |
                                  HyundaiSafetyFlags.LONG | HyundaiSafetyFlags.EV_GAS)
-    self.safety.init_tests()
-
-  def _accel_msg(self, accel, aeb_req=False, aeb_decel=0):
-    values = {
-      "aReqRaw": accel,
-      "aReqValue": accel,
-    }
-    return self.packer.make_can_msg_safety("SCC_CONTROL", self.PT_BUS, values)
-
-  def _tx_acc_state_msg(self, enable):
-    values = {"MainMode_ACC": enable}
-    return self.packer.make_can_msg_safety("SCC_CONTROL", self.PT_BUS, values)
-
-
-class TestHyundaiCanfdLKASteeringAltLongEV(HyundaiLongitudinalBase, TestHyundaiCanfdLKASteeringAltEV):
-  TX_MSGS = [[0x110, 0], [0x1CF, 1], [0x1AA, 1], [0x1A0, 1], [0x362, 0], [0x51, 0], [0x730, 1], [0x12a, 1],
-             [0x160, 1], [0x1e0, 1], [0x1ea, 1], [0x200, 1], [0x345, 1], [0x1da, 1], [0x38c, 1], [0x161, 1], [0x162, 1]]
-
-  RELAY_MALFUNCTION_ADDRS = {0: (0x110, 0x362), 1: (0x1a0,)}
-
-  DISABLED_ECU_UDS_MSG = (0x730, 1)
-  DISABLED_ECU_ACTUATION_MSG = (0x1a0, 1)
-
-  STEER_MSG = "LFA"
-  GAS_MSG = ("ACCELERATOR", "ACCELERATOR_PEDAL")
-  STEER_BUS = 1
-
-  def setUp(self):
-    self.packer = CANPackerSafety("hyundai_canfd_generated")
-    self.safety = libsafety_py.libsafety
-    self.safety.set_safety_hooks(CarParams.SafetyModel.hyundaiCanfd, HyundaiSafetyFlags.CANFD_LKA_STEERING |
-                                 HyundaiSafetyFlags.LONG | HyundaiSafetyFlags.EV_GAS | HyundaiSafetyFlags.CANFD_LKA_STEERING_ALT)
     self.safety.init_tests()
 
   def _accel_msg(self, accel, aeb_req=False, aeb_decel=0):
